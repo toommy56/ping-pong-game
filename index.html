@@ -1,353 +1,764 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2D Ping Pong</title>
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>2D Ping Pong</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
 
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #111;
-      font-family: Arial, sans-serif;
-      color: white;
-    }
+      :root {
+        --bg: #111827;
+        --panel: rgba(17, 24, 39, 0.82);
+        --panel-border: rgba(255, 255, 255, 0.18);
+        --text: #f8fafc;
+        --muted: #cbd5e1;
+        --accent: #38bdf8;
+        --accent-2: #22c55e;
+        --danger: #ef4444;
+        --canvas-bg: #020617;
+      }
 
-    .game-container {
-      text-align: center;
-    }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: radial-gradient(circle at top, #1f2937 0%, var(--bg) 45%, #030712 100%);
+        font-family: Arial, sans-serif;
+        color: var(--text);
+      }
 
-    h1 {
-      margin: 0 0 10px;
-    }
+      .game-shell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+      }
 
-    canvas {
-      display: block;
-      background: #000;
-      border: 3px solid #fff;
-      max-width: 95vw;
-      height: auto;
-    }
+      h1 {
+        margin: 0;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: clamp(1.4rem, 3vw, 2.2rem);
+      }
 
-    .controls {
-      margin-top: 10px;
-      color: #ccc;
-      font-size: 14px;
-    }
-  </style>
-</head>
-<body>
+      .game-container {
+        position: relative;
+        text-align: center;
+      }
 
-  <div class="game-container">
-    <h1>Ping Pong</h1>
-    <canvas id="gameCanvas" width="800" height="500"></canvas>
-    <div class="controls">
-      Player: W / S &nbsp; | &nbsp; First to 10 wins
+      canvas {
+        display: block;
+        background: var(--canvas-bg);
+        border: 3px solid rgba(255, 255, 255, 0.7);
+        border-radius: 12px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+        max-width: 95vw;
+        height: auto;
+      }
+
+      .overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(2, 6, 23, 0.72);
+        border-radius: 12px;
+        backdrop-filter: blur(3px);
+      }
+
+      .overlay.hidden {
+        display: none;
+      }
+
+      .overlay-panel {
+        width: min(82%, 420px);
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 18px;
+        padding: 22px 18px 18px;
+        box-shadow: 0 15px 40px rgba(15, 23, 42, 0.5);
+      }
+
+      .overlay-panel h2 {
+        margin: 0 0 10px;
+        font-size: clamp(1.5rem, 4vw, 2.3rem);
+      }
+
+      .overlay-panel p {
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 0.98rem;
+      }
+
+      .mode-buttons,
+      .difficulty-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+      }
+
+      .mode-btn,
+      .difficulty-btn,
+      .start-btn,
+      .touch-btn {
+        cursor: pointer;
+        border: none;
+        border-radius: 10px;
+        transition: transform 0.12s ease, filter 0.12s ease, opacity 0.12s ease;
+      }
+
+      .mode-btn,
+      .difficulty-btn {
+        padding: 10px 16px;
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        font-weight: 700;
+        min-width: 110px;
+      }
+
+      .mode-btn.active,
+      .difficulty-btn.active {
+        background: linear-gradient(135deg, var(--accent), #2563eb);
+        box-shadow: 0 7px 20px rgba(59, 130, 246, 0.35);
+      }
+
+      .start-btn {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 1.02rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--accent-2), #16a34a);
+        color: white;
+        box-shadow: 0 12px 25px rgba(34, 197, 94, 0.28);
+      }
+
+      .mode-btn:hover,
+      .difficulty-btn:hover,
+      .start-btn:hover,
+      .touch-btn:hover {
+        filter: brightness(1.06);
+        transform: translateY(-1px);
+      }
+
+      .mode-btn:active,
+      .difficulty-btn:active,
+      .start-btn:active,
+      .touch-btn:active {
+        transform: translateY(0);
+      }
+
+      .difficulty-section {
+        margin-bottom: 18px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .difficulty-section:last-child {
+        border-bottom: none;
+      }
+
+      .difficulty-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      .hud {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: min(800px, 95vw);
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .hud .legend {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--accent);
+        display: inline-block;
+      }
+
+      .touch-controls {
+        display: flex;
+        justify-content: space-between;
+        width: min(800px, 95vw);
+        gap: 16px;
+      }
+
+      .touch-group {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex: 1;
+        justify-content: center;
+      }
+
+      .touch-btn {
+        width: 70px;
+        height: 70px;
+        background: rgba(255, 255, 255, 0.09);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        font-size: 1.5rem;
+        font-weight: bold;
+        user-select: none;
+        touch-action: manipulation;
+      }
+
+      .touch-btn[data-control='w'],
+      .touch-btn[data-control='up'] {
+        background: rgba(56, 189, 248, 0.15);
+      }
+
+      .touch-btn[data-control='s'],
+      .touch-btn[data-control='down'] {
+        background: rgba(239, 68, 68, 0.12);
+      }
+
+      .hidden-mobile {
+        display: none;
+      }
+
+      @media (max-width: 700px) {
+        .game-shell {
+          gap: 10px;
+        }
+
+        .hud {
+          width: 95vw;
+          justify-content: center;
+        }
+
+        .touch-controls {
+          width: 95vw;
+        }
+
+        .touch-btn {
+          width: 60px;
+          height: 60px;
+          font-size: 1.25rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-shell">
+      <h1>Ping Pong</h1>
+
+      <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+        <div id="gameOverlay" class="overlay">
+          <div class="overlay-panel">
+            <h2 id="overlayTitle">Ping Pong</h2>
+            <p id="overlayText">Choose your mode</p>
+            <div class="mode-buttons">
+              <button class="mode-btn active" data-mode="cpu">1 Player</button>
+              <button class="mode-btn" data-mode="two">2 Players</button>
+            </div>
+
+            <div id="difficultySection" class="difficulty-section">
+              <label class="difficulty-label">Difficulty Level</label>
+              <div class="difficulty-buttons">
+                <button class="difficulty-btn active" data-difficulty="easy">Easy</button>
+                <button class="difficulty-btn" data-difficulty="medium">Medium</button>
+                <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+              </div>
+            </div>
+
+            <button id="startButton" class="start-btn">Start Game</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud">
+        <div class="legend"><span class="dot"></span> Player: W / S</div>
+        <div id="difficultyDisplay">Difficulty: Easy</div>
+      </div>
+
+      <div class="touch-controls">
+        <div id="leftControls" class="touch-group">
+          <button class="touch-btn" data-control="w" aria-label="Move player up">W</button>
+          <button class="touch-btn" data-control="s" aria-label="Move player down">S</button>
+        </div>
+
+        <div id="rightControls" class="touch-group">
+          <button class="touch-btn" data-control="up" aria-label="Move second player up">↑</button>
+          <button class="touch-btn" data-control="down" aria-label="Move second player down">↓</button>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      const overlay = document.getElementById("gameOverlay");
+      const overlayTitle = document.getElementById("overlayTitle");
+      const overlayText = document.getElementById("overlayText");
+      const startButton = document.getElementById("startButton");
+      const difficultyDisplay = document.getElementById("difficultyDisplay");
+      const difficultySection = document.getElementById("difficultySection");
+      const modeButtons = Array.from(document.querySelectorAll(".mode-btn"));
+      const difficultyButtons = Array.from(document.querySelectorAll(".difficulty-btn"));
+      const leftControls = document.getElementById("leftControls");
+      const rightControls = document.getElementById("rightControls");
 
-    const WIDTH = canvas.width;
-    const HEIGHT = canvas.height;
+      const WIDTH = canvas.width;
+      const HEIGHT = canvas.height;
 
-    const paddleWidth = 12;
-    const paddleHeight = 90;
-    const paddleSpeed = 7;
+      const paddleWidth = 12;
+      const paddleHeight = 90;
+      const paddleSpeed = 7;
 
-    const player = {
-      x: 25,
-      y: HEIGHT / 2 - paddleHeight / 2,
-      width: paddleWidth,
-      height: paddleHeight,
-      speed: paddleSpeed,
-      score: 0
-    };
+      const DIFFICULTY_SETTINGS = {
+        easy: { speed: 3.5, margin: 40, prediction: 0.3 },
+        medium: { speed: 5.3, margin: 20, prediction: 0.7 },
+        hard: { speed: 7.2, margin: 8, prediction: 1 }
+      };
 
-    const computer = {
-      x: WIDTH - 25 - paddleWidth,
-      y: HEIGHT / 2 - paddleHeight / 2,
-      width: paddleWidth,
-      height: paddleHeight,
-      speed: 5,
-      score: 0
-    };
+      const keys = {
+        w: false,
+        s: false,
+        up: false,
+        down: false
+      };
 
-    const ball = {
-      x: WIDTH / 2,
-      y: HEIGHT / 2,
-      radius: 9,
-      speed: 6,
-      velocityX: 6,
-      velocityY: 3
-    };
+      const player = {
+        x: 25,
+        y: HEIGHT / 2 - paddleHeight / 2,
+        width: paddleWidth,
+        height: paddleHeight,
+        speed: paddleSpeed,
+        score: 0,
+        name: "Player 1"
+      };
 
-    const keys = {
-      w: false,
-      s: false
-    };
+      const computer = {
+        x: WIDTH - 25 - paddleWidth,
+        y: HEIGHT / 2 - paddleHeight / 2,
+        width: paddleWidth,
+        height: paddleHeight,
+        speed: 5.3,
+        score: 0,
+        name: "Computer"
+      };
 
-    let gameOver = false;
-    let restartTimer = null;
+      const ball = {
+        x: WIDTH / 2,
+        y: HEIGHT / 2,
+        radius: 9,
+        speed: 6,
+        velocityX: 6,
+        velocityY: 3
+      };
 
-    document.addEventListener("keydown", (event) => {
-      const key = event.key.toLowerCase();
+      let selectedMode = "cpu";
+      let selectedDifficulty = "easy";
+      let gameStarted = false;
+      let gameOver = false;
+      let restartTimer = null;
+      let audioCtx = null;
 
-      if (key === "w" || key === "s") {
-        keys[key] = true;
-        event.preventDefault();
-      }
-    });
-
-    document.addEventListener("keyup", (event) => {
-      const key = event.key.toLowerCase();
-
-      if (key === "w" || key === "s") {
-        keys[key] = false;
-        event.preventDefault();
-      }
-    });
-
-    function resetBall(direction = Math.random() < 0.5 ? -1 : 1) {
-      ball.x = WIDTH / 2;
-      ball.y = HEIGHT / 2;
-
-      ball.speed = 6;
-
-      const angle = (Math.random() * Math.PI / 3) - Math.PI / 6;
-
-      ball.velocityX = Math.cos(angle) * ball.speed * direction;
-      ball.velocityY = Math.sin(angle) * ball.speed;
-
-      player.y = HEIGHT / 2 - paddleHeight / 2;
-      computer.y = HEIGHT / 2 - paddleHeight / 2;
-    }
-
-    function resetGame() {
-      player.score = 0;
-      computer.score = 0;
-      gameOver = false;
-      resetBall();
-    }
-
-    function clampPaddle(paddle) {
-      if (paddle.y < 0) {
-        paddle.y = 0;
-      }
-
-      if (paddle.y + paddle.height > HEIGHT) {
-        paddle.y = HEIGHT - paddle.height;
-      }
-    }
-
-    function updatePlayer() {
-      if (keys.w) {
-        player.y -= player.speed;
-      }
-
-      if (keys.s) {
-        player.y += player.speed;
-      }
-
-      clampPaddle(player);
-    }
-
-    function updateComputer() {
-      const paddleCenter = computer.y + computer.height / 2;
-
-      if (paddleCenter < ball.y - 10) {
-        computer.y += computer.speed;
-      } else if (paddleCenter > ball.y + 10) {
-        computer.y -= computer.speed;
-      }
-
-      clampPaddle(computer);
-    }
-
-    function collision(ball, paddle) {
-      return (
-        ball.x - ball.radius < paddle.x + paddle.width &&
-        ball.x + ball.radius > paddle.x &&
-        ball.y - ball.radius < paddle.y + paddle.height &&
-        ball.y + ball.radius > paddle.y
-      );
-    }
-
-    function bounceFromPaddle(paddle, direction) {
-      const paddleCenter = paddle.y + paddle.height / 2;
-      const hitPosition = (ball.y - paddleCenter) / (paddle.height / 2);
-
-      const maxAngle = Math.PI / 3;
-      const angle = hitPosition * maxAngle;
-
-      ball.speed = Math.min(ball.speed + 0.3, 13);
-
-      ball.velocityX = Math.cos(angle) * ball.speed * direction;
-      ball.velocityY = Math.sin(angle) * ball.speed;
-
-      if (direction > 0) {
-        ball.x = paddle.x + paddle.width + ball.radius;
-      } else {
-        ball.x = paddle.x - ball.radius;
-      }
-    }
-
-    function scorePoint() {
-      if (ball.x < 0) {
-        computer.score++;
-        checkGameOver();
-
-        if (!gameOver) {
-          resetBall(1);
+      function ensureAudio() {
+        if (!audioCtx) {
+          const AudioCtor = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtor) {
+            audioCtx = new AudioCtor();
+          }
         }
       }
 
-      if (ball.x > WIDTH) {
-        player.score++;
-        checkGameOver();
+      function playBeep({ frequency = 300, duration = 0.08, type = "square", volume = 0.04 }) {
+        if (!audioCtx) return;
 
-        if (!gameOver) {
-          resetBall(-1);
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.type = type;
+        oscillator.frequency.value = frequency;
+
+        gainNode.gain.value = volume;
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.start();
+        gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        oscillator.stop(audioCtx.currentTime + duration);
+      }
+
+      function playBounceSound() {
+        playBeep({ frequency: 240, duration: 0.05, type: "triangle", volume: 0.05 });
+      }
+
+      function playScoreSound() {
+        playBeep({ frequency: 420, duration: 0.09, type: "square", volume: 0.05 });
+      }
+
+      function playWinSound() {
+        playBeep({ frequency: 660, duration: 0.12, type: "triangle", volume: 0.06 });
+        setTimeout(() => playBeep({ frequency: 880, duration: 0.14, type: "triangle", volume: 0.06 }), 80);
+      }
+
+      function showOverlay(title, text, buttonLabel) {
+        overlayTitle.textContent = title;
+        overlayText.textContent = text;
+        startButton.textContent = buttonLabel;
+        overlay.classList.remove("hidden");
+      }
+
+      function hideOverlay() {
+        overlay.classList.add("hidden");
+      }
+
+      function setSelectedMode(mode) {
+        selectedMode = mode;
+        modeButtons.forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.mode === mode);
+        });
+
+        if (mode === "cpu") {
+          rightControls.style.display = "none";
+          difficultySection.style.display = "block";
+        } else {
+          rightControls.style.display = "flex";
+          difficultySection.style.display = "none";
         }
       }
-    }
 
-    function checkGameOver() {
-      if (player.score >= 10 || computer.score >= 10) {
-        gameOver = true;
-
-        clearTimeout(restartTimer);
-
-        restartTimer = setTimeout(() => {
-          resetGame();
-        }, 2000);
-      }
-    }
-
-    function updateBall() {
-      ball.x += ball.velocityX;
-      ball.y += ball.velocityY;
-
-      if (ball.y - ball.radius <= 0) {
-        ball.y = ball.radius;
-        ball.velocityY *= -1;
+      function setSelectedDifficulty(difficulty) {
+        selectedDifficulty = difficulty;
+        difficultyButtons.forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.difficulty === difficulty);
+        });
+        updateDifficultyDisplay();
       }
 
-      if (ball.y + ball.radius >= HEIGHT) {
-        ball.y = HEIGHT - ball.radius;
-        ball.velocityY *= -1;
+      function updateDifficultyDisplay() {
+        const labels = { easy: "Easy", medium: "Medium", hard: "Hard" };
+        difficultyDisplay.textContent = `Difficulty: ${labels[selectedDifficulty]}`;
       }
 
-      if (
-        ball.velocityX < 0 &&
-        collision(ball, player)
-      ) {
-        bounceFromPaddle(player, 1);
+      function resetBall(direction = Math.random() < 0.5 ? -1 : 1) {
+        ball.x = WIDTH / 2;
+        ball.y = HEIGHT / 2;
+        ball.speed = 6;
+
+        const angle = (Math.random() * Math.PI / 3) - Math.PI / 6;
+        ball.velocityX = Math.cos(angle) * ball.speed * direction;
+        ball.velocityY = Math.sin(angle) * ball.speed;
+
+        player.y = HEIGHT / 2 - paddleHeight / 2;
+        computer.y = HEIGHT / 2 - paddleHeight / 2;
       }
 
-      if (
-        ball.velocityX > 0 &&
-        collision(ball, computer)
-      ) {
-        bounceFromPaddle(computer, -1);
+      function resetGame() {
+        player.score = 0;
+        computer.score = 0;
+        gameOver = false;
+        resetBall();
       }
 
-      scorePoint();
-    }
-
-    function drawRect(x, y, width, height) {
-      ctx.fillRect(x, y, width, height);
-    }
-
-    function drawBall() {
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.closePath();
-    }
-
-    function drawCenterLine() {
-      ctx.setLineDash([10, 10]);
-      ctx.beginPath();
-      ctx.moveTo(WIDTH / 2, 0);
-      ctx.lineTo(WIDTH / 2, HEIGHT);
-      ctx.strokeStyle = "#555";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    function drawScore() {
-      ctx.font = "bold 48px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText(player.score, WIDTH / 2 - 70, 60);
-      ctx.fillText(computer.score, WIDTH / 2 + 70, 60);
-    }
-
-    function drawGameOver() {
-      if (!gameOver) return;
-
-      ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
-      ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-      ctx.fillStyle = "#fff";
-      ctx.textAlign = "center";
-
-      const winner =
-        player.score >= 10
-          ? "You Win!"
-          : "Computer Wins!";
-
-      ctx.font = "bold 50px Arial";
-      ctx.fillText(winner, WIDTH / 2, HEIGHT / 2 - 20);
-
-      ctx.font = "22px Arial";
-      ctx.fillText(
-        "Restarting...",
-        WIDTH / 2,
-        HEIGHT / 2 + 30
-      );
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, WIDTH, HEIGHT);
-
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-      ctx.fillStyle = "#fff";
-
-      drawCenterLine();
-      drawRect(player.x, player.y, player.width, player.height);
-      drawRect(computer.x, computer.y, computer.width, computer.height);
-      drawBall();
-      drawScore();
-      drawGameOver();
-    }
-
-    function gameLoop() {
-      if (!gameOver) {
-        updatePlayer();
-        updateComputer();
-        updateBall();
+      function startGame() {
+        ensureAudio();
+        resetGame();
+        gameStarted = true;
+        hideOverlay();
       }
 
-      draw();
-      requestAnimationFrame(gameLoop);
-    }
+      function clampPaddle(paddle) {
+        if (paddle.y < 0) {
+          paddle.y = 0;
+        }
 
-    resetGame();
-    gameLoop();
-  </script>
+        if (paddle.y + paddle.height > HEIGHT) {
+          paddle.y = HEIGHT - paddle.height;
+        }
+      }
 
-</body>
+      function updatePlayer() {
+        if (keys.w) {
+          player.y -= player.speed;
+        }
+
+        if (keys.s) {
+          player.y += player.speed;
+        }
+
+        clampPaddle(player);
+      }
+
+      function updatePlayerTwo() {
+        if (keys.up) {
+          player.y -= player.speed;
+        }
+
+        if (keys.down) {
+          player.y += player.speed;
+        }
+
+        clampPaddle(player);
+      }
+
+      function updateComputer() {
+        if (selectedMode !== "cpu") return;
+
+        const settings = DIFFICULTY_SETTINGS[selectedDifficulty];
+        const paddleCenter = computer.y + computer.height / 2;
+        let targetY = ball.y;
+
+        // Prediction based on difficulty
+        if (ball.velocityX > 0) {
+          const timeToReach = (computer.x - ball.x) / ball.velocityX;
+          const predictedY = ball.y + ball.velocityY * timeToReach * settings.prediction;
+          targetY = ball.y + (predictedY - ball.y) * settings.prediction;
+        }
+
+        const margin = settings.margin;
+
+        // Apply some random error on easy difficulty
+        let targetWithError = targetY;
+        if (selectedDifficulty === "easy" && Math.random() < 0.15) {
+          targetWithError += (Math.random() - 0.5) * 60;
+        }
+
+        if (targetWithError < paddleCenter - margin) {
+          computer.y -= settings.speed;
+        } else if (targetWithError > paddleCenter + margin) {
+          computer.y += settings.speed;
+        }
+
+        clampPaddle(computer);
+      }
+
+      function collision(ballObj, paddle) {
+        return (
+          ballObj.x - ballObj.radius < paddle.x + paddle.width &&
+          ballObj.x + ballObj.radius > paddle.x &&
+          ballObj.y - ballObj.radius < paddle.y + paddle.height &&
+          ballObj.y + ballObj.radius > paddle.y
+        );
+      }
+
+      function bounceFromPaddle(paddle, direction) {
+        const paddleCenter = paddle.y + paddle.height / 2;
+        const hitPosition = (ball.y - paddleCenter) / (paddle.height / 2);
+        const maxAngle = Math.PI / 3;
+        const angle = hitPosition * maxAngle;
+
+        ball.speed = Math.min(ball.speed + 0.25, 14);
+        ball.velocityX = Math.cos(angle) * ball.speed * direction;
+        ball.velocityY = Math.sin(angle) * ball.speed;
+
+        if (direction > 0) {
+          ball.x = paddle.x + paddle.width + ball.radius;
+        } else {
+          ball.x = paddle.x - ball.radius;
+        }
+
+        playBounceSound();
+      }
+
+      function checkGameOver() {
+        if (player.score >= 10 || computer.score >= 10) {
+          gameOver = true;
+          gameStarted = false;
+          clearTimeout(restartTimer);
+
+          const winner = player.score >= 10 ? "You Win!" : selectedMode === "cpu" ? "Computer Wins!" : "Player 2 Wins!";
+          showOverlay("Game Over", `${winner} — press play to restart`, "Play Again");
+          playWinSound();
+        }
+      }
+
+      function scorePoint() {
+        if (ball.x < 0) {
+          computer.score++;
+          playScoreSound();
+          checkGameOver();
+
+          if (!gameOver) {
+            resetBall(1);
+          }
+        }
+
+        if (ball.x > WIDTH) {
+          player.score++;
+          playScoreSound();
+          checkGameOver();
+
+          if (!gameOver) {
+            resetBall(-1);
+          }
+        }
+      }
+
+      function updateBall() {
+        ball.x += ball.velocityX;
+        ball.y += ball.velocityY;
+
+        if (ball.y - ball.radius <= 0) {
+          ball.y = ball.radius;
+          ball.velocityY *= -1;
+        }
+
+        if (ball.y + ball.radius >= HEIGHT) {
+          ball.y = HEIGHT - ball.radius;
+          ball.velocityY *= -1;
+        }
+
+        if (ball.velocityX < 0 && collision(ball, player)) {
+          bounceFromPaddle(player, 1);
+        }
+
+        if (ball.velocityX > 0 && collision(ball, computer)) {
+          bounceFromPaddle(computer, -1);
+        }
+
+        scorePoint();
+      }
+
+      function drawRect(x, y, width, height) {
+        ctx.fillRect(x, y, width, height);
+      }
+
+      function drawBall() {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+      }
+
+      function drawCenterLine() {
+        ctx.setLineDash([12, 12]);
+        ctx.beginPath();
+        ctx.moveTo(WIDTH / 2, 0);
+        ctx.lineTo(WIDTH / 2, HEIGHT);
+        ctx.strokeStyle = "rgba(255,255,255,0.4)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      function drawScore() {
+        ctx.font = "bold 48px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(player.score, WIDTH / 2 - 70, 60);
+        ctx.fillText(computer.score, WIDTH / 2 + 70, 60);
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+        ctx.fillStyle = "#fff";
+        drawCenterLine();
+
+        drawRect(player.x, player.y, player.width, player.height);
+        drawRect(computer.x, computer.y, computer.width, computer.height);
+        drawBall();
+        drawScore();
+      }
+
+      function gameLoop() {
+        if (gameStarted && !gameOver) {
+          updatePlayer();
+          if (selectedMode === "two") {
+            updatePlayerTwo();
+          } else {
+            updateComputer();
+          }
+          updateBall();
+        }
+
+        draw();
+        requestAnimationFrame(gameLoop);
+      }
+
+      function handleKeyChange(event, isPressed) {
+        const key = event.key.toLowerCase();
+
+        if (key === "w") keys.w = isPressed;
+        if (key === "s") keys.s = isPressed;
+        if (key === "arrowup") keys.up = isPressed;
+        if (key === "arrowdown") keys.down = isPressed;
+
+        if (["w", "s", "arrowup", "arrowdown"].includes(key)) {
+          event.preventDefault();
+        }
+      }
+
+      document.addEventListener("keydown", (event) => handleKeyChange(event, true));
+      document.addEventListener("keyup", (event) => handleKeyChange(event, false));
+
+      modeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setSelectedMode(button.dataset.mode);
+        });
+      });
+
+      difficultyButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setSelectedDifficulty(button.dataset.difficulty);
+        });
+      });
+
+      startButton.addEventListener("click", () => {
+        startGame();
+      });
+
+      document.querySelectorAll(".touch-btn").forEach((button) => {
+        const control = button.dataset.control;
+
+        const setPressed = (isPressed) => {
+          if (control === "w") keys.w = isPressed;
+          if (control === "s") keys.s = isPressed;
+          if (control === "up") keys.up = isPressed;
+          if (control === "down") keys.down = isPressed;
+        };
+
+        button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          setPressed(true);
+        });
+
+        button.addEventListener("pointerup", () => setPressed(false));
+        button.addEventListener("pointerleave", () => setPressed(false));
+        button.addEventListener("pointercancel", () => setPressed(false));
+      });
+
+      function syncTouchLayout() {
+        const showRight = selectedMode === "two";
+        rightControls.style.display = showRight ? "flex" : "none";
+        difficultySection.style.display = selectedMode === "cpu" ? "block" : "none";
+      }
+
+      setSelectedMode(selectedMode);
+      setSelectedDifficulty(selectedDifficulty);
+      syncTouchLayout();
+      updateDifficultyDisplay();
+      showOverlay("Ping Pong", "Choose your mode", "Start Game");
+      gameLoop();
+    </script>
+  </body>
 </html>
